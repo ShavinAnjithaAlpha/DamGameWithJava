@@ -1,0 +1,8 @@
+#left-position-label, #right-position-label {
+    -fx-text-fill: skyblue;
+    -fx-font-size: 40px;
+    -fx-background-color: rgb(50, 0, 100);
+    -fx-padding: 25px;
+    -fx-border-radius: 8px;
+    -fx-font-family: "Helvetica";
+}

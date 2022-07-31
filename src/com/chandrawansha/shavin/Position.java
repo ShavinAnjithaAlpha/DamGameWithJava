@@ -49,4 +49,16 @@ public class Position {
     public boolean compareWithDisk(Disk disk){
         return disk.getX() == this.X && disk.getY() == this.Y;
     }
+
+    public boolean isValid(){
+        return (X >= 0 && X < DamModel.BOARD_SIZE) && (Y >= 0 && Y < DamModel.BOARD_SIZE);
+    }
+
+    @Override
+    public String toString() {
+        return "Position{" +
+                "X=" + X +
+                ", Y=" + Y +
+                '}';
+    }
 }

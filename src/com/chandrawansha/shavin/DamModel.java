@@ -3,6 +3,8 @@ package com.chandrawansha.shavin;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 
+import java.util.Arrays;
+
 public class DamModel {
 
     // declare the dam board constants
@@ -41,11 +43,15 @@ public class DamModel {
         return blackSideDisks;
     }
 
+    public Side getCurrentSide(){
+        return currentSide;
+    }
+
     // method for extract the appropriate disk object from the disk arrays
     public Disk getDisk(String tag){
         // split the string and extract id of the disk
-        String side = tag.split(".")[0];
-        int id = Integer.parseInt(tag.split(".")[1]);
+        String side = tag.split("[.]")[0];
+        int id = Integer.parseInt(tag.split("[.]")[1]);
 
         if (side.equals("W")){
             return whiteSideDisks[id];
@@ -167,11 +173,13 @@ public class DamModel {
 
     public MoveType move(Disk disk, Position position){
         // first check for emptyness
-        if (isEmptyPosition(position, currentSide)){
+        if (!isEmptyPosition(position, currentSide)){
             return MoveType.INVALID;
         }
-
+        System.out.println("empty write");
         // now check for normal move
+        System.out.println(position);
+        System.out.println(disk.getPosition());
         if ((position.getY() == disk.getY() + 1 && position.getX() == disk.getX() + 1)
                 || (position.getY() == disk.getY() + 1 && position.getX() == disk.getX() - 1)){
             disk.setPosition(position);
@@ -198,6 +206,28 @@ public class DamModel {
             return MoveType.KING_CUTTED;
         }
         return MoveType.INVALID;
+    }
+
+    public int getDiskIndex(Position position){
+        if (!position.isValid()){
+            return -1;
+        }
+
+        if (currentSide == Side.WHITE){
+            for (int i = 0; i < whiteSideDisks.length; i++){
+                if (position.compareWithDisk(whiteSideDisks[i])){
+                    return i;
+                }
+            }
+        }
+        else{
+            for (int i = 0; i < blackSideDisks.length; i++){
+                if (position.compareWithDisk(blackSideDisks[i])){
+                    return i;
+                }
+            }
+        }
+        return -1;
     }
 
 }
