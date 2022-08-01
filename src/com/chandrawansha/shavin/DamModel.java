@@ -61,11 +61,31 @@ public class DamModel {
         }
     }
 
+    public boolean determineValid(Disk disk, Position position){
+        if (position.isValid()){
+            if (isEmptyPosition(position, currentSide)){
+                // now check move types
+                if (position.getY() == disk.getY() + 1 && (position.getX() == disk.getX() + 1 || position.getX() == disk.getX() - 1)){
+                    return true;
+                }
+                else if (position.getY() == disk.getY() + 2){
+                    // check for cutted move
+                    return false;
+                }
+                else{
+                    // check for king move
+                    return false;
+                }
+            }
+        }
+        return false;
+    }
+
     public boolean isEmptyPosition(Position position, Side side){
         if (side == Side.WHITE){
             // firs check for white disks
             for (Disk disk : whiteSideDisks){
-                if (position.compareWithDisk(disk)){
+                if (position.compareWithDisk(disk) && disk.getDiskType() != DiskType.NULL){
                     return false;
                 }
             }
@@ -73,7 +93,7 @@ public class DamModel {
             // then check for black disks
             Position inversePosition = Position.inverse(position);
             for (Disk disk : blackSideDisks){
-                if (inversePosition.compareWithDisk(disk)){
+                if (inversePosition.compareWithDisk(disk)  && disk.getDiskType() != DiskType.NULL){
                     return false;
                 }
             }
@@ -81,7 +101,7 @@ public class DamModel {
         else{
             // firs check for white disks
             for (Disk disk : blackSideDisks){
-                if (position.compareWithDisk(disk)){
+                if (position.compareWithDisk(disk)  && disk.getDiskType() != DiskType.NULL){
                     return false;
                 }
             }
@@ -89,7 +109,7 @@ public class DamModel {
             // then check for black disks
             for (Disk disk : whiteSideDisks){
                 Position inversePosition = Position.inverse(position);
-                if (inversePosition.compareWithDisk(disk)){
+                if (inversePosition.compareWithDisk(disk)  && disk.getDiskType() != DiskType.NULL){
                     return false;
                 }
             }
@@ -125,6 +145,7 @@ public class DamModel {
                         // process the cutting
                         blackDisk.setDiskType(DiskType.NULL); // set as the removed disk from the board
                         lastRemovedDisk = blackDisk; // set the last removed disk
+                        disk.setPosition(position); // set new position
                         return true;
                     }
                 }
@@ -143,6 +164,7 @@ public class DamModel {
                         // process the cutting
                         whiteDisk.setDiskType(DiskType.NULL); // set as the removed disk from the board
                         lastRemovedDisk = whiteDisk; // set last removed disk
+                        disk.setPosition(position); // set new position for disk
                         return true;
                     }
                 }
@@ -172,14 +194,12 @@ public class DamModel {
     }
 
     public MoveType move(Disk disk, Position position){
-        // first check for emptyness
+        // first check for emptiness
         if (!isEmptyPosition(position, currentSide)){
             return MoveType.INVALID;
         }
-        System.out.println("empty write");
+
         // now check for normal move
-        System.out.println(position);
-        System.out.println(disk.getPosition());
         if ((position.getY() == disk.getY() + 1 && position.getX() == disk.getX() + 1)
                 || (position.getY() == disk.getY() + 1 && position.getX() == disk.getX() - 1)){
             disk.setPosition(position);
@@ -193,7 +213,7 @@ public class DamModel {
             return MoveType.NORMAL;
         }
 
-        // now check for the cutted move
+        // now check for the cut move
         if (checkForCutting(disk, position, currentSide)){
             // check for making king
             if (makeKing(disk, currentSide)){
@@ -208,12 +228,12 @@ public class DamModel {
         return MoveType.INVALID;
     }
 
-    public int getDiskIndex(Position position){
+    public int getDiskIndex(Position position, Side side){
         if (!position.isValid()){
             return -1;
         }
 
-        if (currentSide == Side.WHITE){
+        if (side == Side.WHITE){
             for (int i = 0; i < whiteSideDisks.length; i++){
                 if (position.compareWithDisk(whiteSideDisks[i])){
                     return i;
@@ -230,4 +250,7 @@ public class DamModel {
         return -1;
     }
 
+    public Disk getLastRemovedDisk(){
+        return lastRemovedDisk;
+    }
 }
