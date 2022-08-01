@@ -1,7 +1,10 @@
 package com.chandrawansha.shavin;
 
+import javafx.beans.property.ListProperty;
 import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleListProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.collections.FXCollections;
 
 import java.util.Arrays;
 
@@ -17,7 +20,7 @@ public class DamModel {
 
     private Side firstMoveSide = Side.WHITE;
     private SimpleObjectProperty<Side> currentSide = new SimpleObjectProperty<>(firstMoveSide);
-    private Disk lastRemovedDisk;
+    private ListProperty<Disk> lastRemovedDisk = new SimpleListProperty<>(FXCollections.observableArrayList());
     private ObjectProperty<Disk> kingProperty = new SimpleObjectProperty<>();
 
     public void newGame(){
@@ -55,7 +58,7 @@ public class DamModel {
             if (isBlankPosition(position, getCurrentSide())){
 
                 // now check move types
-                if (position.getY() == disk.getY() + 1 && (position.getX() == disk.getX() + 1 || position.getX() == disk.getX() - 1)){
+                if (checkForNormalMove(disk, position)){
                     return true;
                 }
 
@@ -73,7 +76,7 @@ public class DamModel {
                     if (getCurrentSide() == Side.WHITE){
                         if (getDisk(newPosition, Side.WHITE) != null)
                             return false;
-                        if (getDisk(Position.inverse(newPosition), Side.BLACK) == null)
+                        if (getDisk(newPosition.inverse(), Side.BLACK) == null)
                             return false;
                         else
                             return true;
@@ -81,7 +84,7 @@ public class DamModel {
                     else{
                         if (getDisk(newPosition, Side.BLACK) != null)
                             return false;
-                        if (getDisk(Position.inverse(newPosition), Side.WHITE) == null)
+                        if (getDisk(newPosition.inverse(), Side.WHITE) == null)
                             return false;
                         else
                             return true;
@@ -119,9 +122,10 @@ public class DamModel {
 
                 // get the disk
                 Disk checkedDisk = getDisk(new Position(x, y), side);
-                if (checkedDisk != null) {
+                if (checkedDisk != null && checkedDisk.getDiskType() != DiskType.NULL) {
                     return false;
                 }
+                c++;
             }
             return true;
         }
@@ -196,7 +200,7 @@ public class DamModel {
                     if (inversePosition.compareWithDisk(blackDisk)){
                         // process the cutting
                         blackDisk.setDiskType(DiskType.NULL); // set as the removed disk from the board
-                        lastRemovedDisk = blackDisk; // set the last removed disk
+                        lastRemovedDisk.add(blackDisk); // set the last removed disk
                         disk.setPosition(position); // set new position
                         return true;
                     }
@@ -215,7 +219,7 @@ public class DamModel {
                     if (inversePosition.compareWithDisk(whiteDisk)){
                         // process the cutting
                         whiteDisk.setDiskType(DiskType.NULL); // set as the removed disk from the board
-                        lastRemovedDisk = whiteDisk; // set last removed disk
+                        lastRemovedDisk.add(whiteDisk); // set last removed disk
                         disk.setPosition(position); // set new position for disk
                         return true;
                     }
@@ -227,7 +231,38 @@ public class DamModel {
     }
 
     public void processKingCutting(Disk disk, Position position, Side side){
-        //
+        int diff = Math.abs(position.getX() - disk.getX());
+        int c = 1;
+        int x = disk.getX();
+        int y = disk.getY();
+        boolean removed = false;
+        while (c < diff){
+            if (position.getX() > disk.getX())
+                x++;
+            else
+                x--;
+
+            if (position.getY() > disk.getY())
+                y++;
+            else
+                y--;
+
+            // get disk from position
+            Disk removedDisk = getDisk(new Position(x, y).inverse(), side == Side.WHITE ? Side.BLACK : Side.BLACK);
+            if (removedDisk != null){
+                removed = true;
+                removedDisk.setDiskType(DiskType.NULL);
+                lastRemovedDisk.add(removedDisk);
+            }
+            c++;
+            if (!removed){
+                // change side
+                currentSide.set(getCurrentSide() == Side.WHITE ? Side.BLACK : Side.WHITE);
+            }
+        }
+
+        disk.setPosition(position);
+
     }
 
     public boolean makeKing(Disk disk, Side side){
@@ -270,14 +305,15 @@ public class DamModel {
             return MoveType.CUTTED;
         }
         // in last, check for king cutting
-        if (processNormalCut(disk, position, getCurrentSide())){
+        if (checkForKingCut(disk, position, getCurrentSide())){
             processKingCutting(disk, position, getCurrentSide());
             return MoveType.KING_CUTTED;
         }
         return MoveType.INVALID;
     }
 
-    public Disk getLastRemovedDisk(){
+
+    public ListProperty<Disk> lastRemovedDiskProperty(){
         return lastRemovedDisk;
     }
 

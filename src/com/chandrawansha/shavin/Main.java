@@ -6,6 +6,7 @@ import javafx.beans.property.*;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableMap;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -277,23 +278,38 @@ public class Main extends Application {
             public void changed(ObservableValue<? extends Disk> observable, Disk oldValue, Disk newValue) {
                 // set the disk image as king image
                 // first get the disk image
-                int diskIndex = damModel.getDiskIndex(newValue.getPosition(), damModel.getCurrentSide());
-                Ellipse kingDisk = null;
-                Ellipse mirrorKingDisk = null;
-                if (damModel.getCurrentSide() == Side.WHITE) {
-                    kingDisk = getDiskImageByIndex(whiteDisks, diskIndex);
-                    mirrorKingDisk = whiteDisks.get(kingDisk);
+                Ellipse kingDisk = newValue.getActiveDisk();
+                Ellipse mirrorKingDisk = newValue.getMirrorDisk();
 
+                if (damModel.getCurrentSide() == Side.WHITE) {
                     kingDisk.fillProperty().bind(gameColorMap.get("WHITE-KING"));
                     mirrorKingDisk.fillProperty().bind(gameColorMap.get("WHITE-KING"));
                 } else {
-                    kingDisk = getDiskImageByIndex(blackDisks, diskIndex);
-                    mirrorKingDisk = blackDisks.get(kingDisk);
-
                     kingDisk.fillProperty().bind(gameColorMap.get("BLACK-KING"));
                     mirrorKingDisk.fillProperty().bind(gameColorMap.get("BLACK-KING"));
                 }
 
+            }
+        });
+
+        damModel.lastRemovedDiskProperty().addListener(new ListChangeListener<Disk>() {
+            @Override
+            public void onChanged(Change<? extends Disk> c) {
+                while (c.next()) {
+                    for (Disk disk : c.getAddedSubList()){
+                        disk.getActiveDisk().setVisible(false);
+                        disk.getMirrorDisk().setVisible(false);
+
+                        // update the disk bars
+                        if (whiteDisks.containsKey(disk.getActiveDisk())){
+                            leftDiskBar.addDisk(disk.getDiskType());
+                        }
+                        else{
+                            rightDiskBar.addDisk(disk.getDiskType());
+                        }
+                    }
+                }
+                damModel.lastRemovedDiskProperty().clear(); // clear the last removed disks array list
             }
         });
 
@@ -535,15 +551,7 @@ public class Main extends Application {
             // get disk image
             Ellipse diskImage = (Ellipse) event.getSource();
             if (checkSide(diskImage)) {
-                Ellipse mirrorImage = null;
-                // check if in the right board
-                if (damModel.getCurrentSide() == Side.WHITE && whiteDisks.containsKey(diskImage)) {
-                    mirrorImage = whiteDisks.get(diskImage);
-                } else if (damModel.getCurrentSide() == Side.BLACK && blackDisks.containsKey(diskImage)) {
-                    mirrorImage = blackDisks.get(diskImage);
-                } else {
-                    return;
-                }
+                Ellipse mirrorImage = ((Disk) diskImage.getUserData()).getMirrorDisk();
 
                 // set new position
                 diskImage.centerXProperty().unbind();
@@ -601,38 +609,6 @@ public class Main extends Application {
             if (damModel.isBlankPosition(currentPosition, damModel.getCurrentSide())) {
                 // next check if the new position is valid position
                 MoveType diskMove = damModel.move((Disk) activeDisk.getUserData(), currentPosition);
-
-//                bindAgain(activeDisk);
-
-                if (diskMove == MoveType.CUTTED) {
-//                    // hide the removed disk
-//                    int index = damModel.getDiskIndex(damModel.getLastRemovedDisk().getPosition(),
-//                            damModel.getCurrentSide() == Side.WHITE ? Side.BLACK : Side.WHITE);
-//                    Ellipse removedDisk = null;
-//                    Ellipse mirrorRemovedDisk = null;
-//                    if (damModel.getCurrentSide() == Side.WHITE) {
-//                        removedDisk = getDiskImageByIndex(blackDisks, index);
-//                        mirrorRemovedDisk = blackDisks.get(removedDisk);
-//
-//                        rightDiskBar.addDisk(DiskType.BLACK);
-//                    } else {
-//                        removedDisk = getDiskImageByIndex(whiteDisks, index);
-//                        mirrorRemovedDisk = whiteDisks.get(removedDisk);
-//
-//                        leftDiskBar.addDisk(DiskType.WHITE);
-//                    }
-//                    removedDisk.setVisible(false);
-//                    mirrorRemovedDisk.setVisible(false);
-
-                    damModel.getLastRemovedDisk().getActiveDisk().setVisible(false);
-                    damModel.getLastRemovedDisk().getMirrorDisk().setVisible(false);
-
-
-                }
-                else if (diskMove == MoveType.KING_CUTTED) {
-                    // king cutting
-                    System.out.println("King Move");
-                }
             }
         }
         bindAgain(activeDisk);
@@ -651,16 +627,6 @@ public class Main extends Application {
         bindPosition(mirrorDisk, disk.getPosition().inverse());
     }
 
-//    private void bindAgainForMove(Ellipse activeDisk) {
-//        Ellipse mirrorDisk = ((Disk) activeDisk.getUserData()).getMirrorDisk();
-//        // get Model Disk object relative to disk image
-//        Disk disk = damModel.getDisk((String) activeDisk.getUserData());
-//
-//        // now bind the disk images
-//        bindPosition(activeDisk, disk.getPosition());
-//        bindPosition(mirrorDisk, disk.getPosition().inverse());
-//    }
-
     private boolean checkSide(Ellipse disk) {
         if (damModel.getCurrentSide() == Side.WHITE && whiteDisks.containsKey(disk)) {
             return true;
@@ -673,7 +639,7 @@ public class Main extends Application {
     // methods for other game features
     private void setValidBox(Ellipse diskImage, Position position) {
         //
-        if (damModel.determineValid(damModel.getDisk((String) diskImage.getUserData()), position)) {
+        if (damModel.determineValid((Disk) diskImage.getUserData(), position)) {
             if (damModel.getCurrentSide() == Side.WHITE) {
                 setBoxPosition(leftValidBox, position);
                 setBoxPosition(rightValidBox, Position.inverse(position));
