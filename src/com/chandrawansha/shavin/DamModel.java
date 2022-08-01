@@ -130,7 +130,7 @@ public class DamModel {
 
     public boolean checkForNormalMove(Disk disk, Position position){
 
-        return (position.getY() == disk.getY() + 1 && (position.getX() == disk.getX() + 1 || position.getX() - 1));
+        return (position.getY() == disk.getY() + 1 && (position.getX() == disk.getX() + 1 || position.getX()  == disk.getX() - 1));
     }
 
     public boolean isBlankPosition(Position position, Side side){
