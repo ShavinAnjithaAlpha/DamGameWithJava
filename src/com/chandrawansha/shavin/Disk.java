@@ -1,10 +1,15 @@
 package com.chandrawansha.shavin;
 
+import javafx.scene.shape.Ellipse;
+import javafx.util.Pair;
+
 public class Disk {
 
     private DiskType diskType;
     private int positionX;
     private int positionY;
+
+    private Pair<Ellipse, Ellipse> diskImages;
 
     public Disk(DiskType diskType, int x, int y) throws Exception{
         if (x < 0 || x >= DamModel.BOARD_SIZE)
@@ -48,5 +53,17 @@ public class Disk {
 
     public Position getPosition(){
         return new Position(positionX, positionY);
+    }
+
+    public void setDiskImages(Ellipse activeDisk, Ellipse mirrorDisk){
+        diskImages = new Pair<>(activeDisk, mirrorDisk);
+    }
+
+    public Ellipse getActiveDisk(){
+        return diskImages.getKey();
+    }
+
+    public Ellipse getMirrorDisk(){
+        return diskImages.getValue();
     }
 }

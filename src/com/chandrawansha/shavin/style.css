@@ -1,12 +1,17 @@
+.root {
+    -fx-background-color: rgb(40, 40, 40);
+}
+
 #left-position-label, #right-position-label {
     -fx-text-fill: skyblue;
-    -fx-font-size: 40px;
+    -fx-font-size:30px;
     -fx-background-color: rgb(50, 0, 100);
-    -fx-padding: 25px;
+    -fx-padding: 50px;
     -fx-border-radius: 8px;
     -fx-font-family: "Helvetica";
 }
 
-#left-pane, #right-pane {
-
+.static-group {
+    -fx-background-color: blue;
+    -fx-border-width: 0px;
 }

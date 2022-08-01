@@ -1,18 +1,18 @@
 package com.chandrawansha.shavin;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.beans.property.*;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableMap;
-import javafx.event.Event;
-import javafx.event.EventType;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
+import javafx.scene.control.*;
 import javafx.scene.effect.*;
-import javafx.scene.input.DragEvent;
-import javafx.scene.input.MouseEvent;
+import javafx.scene.input.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
@@ -25,12 +25,11 @@ import javafx.stage.Stage;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.function.BiConsumer;
 
 public class Main extends Application {
 
     // declare constants
-    private static final IntegerProperty BOX_SIZE = new SimpleIntegerProperty(75);
+    private static final IntegerProperty BOX_SIZE = new SimpleIntegerProperty(70);
     private static final DoubleProperty DISK_SIZE = new SimpleDoubleProperty(0.35);
     private static final String whiteSymbol = "W";
     private static final String blackSymbol = "B";
@@ -53,6 +52,12 @@ public class Main extends Application {
     private final Rectangle leftValidBox = new Rectangle(BOX_SIZE.getValue(), BOX_SIZE.getValue());
     private final Rectangle rightValidBox = new Rectangle(BOX_SIZE.getValue(), BOX_SIZE.getValue());
 
+    private final Rectangle leftIndicator = new Rectangle();
+    private final Rectangle rightIndicator = new Rectangle();
+
+    private RemovedDiskBar leftDiskBar;
+    private RemovedDiskBar rightDiskBar;
+
     // other game properties
     private final ObservableMap<String, ObjectProperty<Color>> gameColorMap = FXCollections.observableHashMap();
 
@@ -64,6 +69,32 @@ public class Main extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
+        // create border pane
+        final BorderPane borderPane = new BorderPane();
+
+        // create left and right
+        createCenter(borderPane);
+        createTop(borderPane);
+        createLeft(borderPane);
+        createRight(borderPane);
+
+        // initiate basic game properties
+        initiateSettings();
+        // initiate other nodes
+        initiate();
+
+        // start the new game
+        newGame();
+
+        Scene scene = new Scene(borderPane);
+        scene.getStylesheets().add(getClass().getResource("style.css").toExternalForm());
+        // create new Scene and attach to primary stage
+        primaryStage.setScene(scene);
+        primaryStage.setTitle("Dam Game");
+        primaryStage.show();
+    }
+
+    final private void createCenter(BorderPane borderPane) {
         // build the basic dam board in here
         // create two panes using box sizes
         leftPane = new Pane();
@@ -84,33 +115,97 @@ public class Main extends Application {
         // bind the mouse move event listeners
         rightPane.setOnMouseMoved(this::rightPaneMouseMoved);
 
-        // initiate basic game properties
-        initiateSettings();
-        // initiate other nodes
-        initiate();
-
         // create hbox for pack theses two panes
         HBox hBox = new HBox(leftPane, rightPane);
         hBox.setSpacing(25);
         hBox.setPadding(new Insets(10));
         hBox.setAlignment(Pos.CENTER);
 
-        // create border pane
-        final BorderPane borderPane = new BorderPane();
-        borderPane.setCenter(hBox);
+        // current board indicator bars
+        leftIndicator.widthProperty().bind(leftPane.widthProperty());
+        rightIndicator.widthProperty().bind(rightPane.widthProperty());
 
-        // create left and right
-        createLeft(borderPane);
-        createRight(borderPane);
-        // start the new game
-        newGame();
+        for (Rectangle indicator : new Rectangle[]{leftIndicator, rightIndicator}) {
+            indicator.setHeight(25);
+            indicator.setArcWidth(20);
+            indicator.setArcHeight(20);
 
-        Scene scene = new Scene(borderPane);
-        scene.getStylesheets().add(getClass().getResource("style.css").toExternalForm());
-        // create new Scene and attach to primary stage
-        primaryStage.setScene(scene);
-        primaryStage.setTitle("Dam Game");
-        primaryStage.show();
+            indicator.setEffect(new DropShadow(5, Color.GREY));
+
+            updateIndicators();
+        }
+        HBox hBox1 = new HBox(leftIndicator, rightIndicator);
+        hBox1.setAlignment(Pos.TOP_CENTER);
+        hBox1.setSpacing(25);
+
+        // crate disk bar
+        leftDiskBar = new RemovedDiskBar(gameColorMap);
+        rightDiskBar = new RemovedDiskBar(gameColorMap);
+
+        leftDiskBar.prefWidthProperty().bind(leftPane.widthProperty());
+        rightDiskBar.prefWidthProperty().bind(rightPane.widthProperty());
+
+        HBox hBox2 = new HBox(leftDiskBar, rightDiskBar);
+        hBox2.setSpacing(25);
+        hBox2.setAlignment(Pos.TOP_CENTER);
+
+        VBox vBox = new VBox(hBox, hBox1, hBox2);
+        vBox.setSpacing(20);
+
+        borderPane.setCenter(vBox);
+    }
+
+    final private void createTop(BorderPane borderPane) {
+
+        // create the menu bar
+        final MenuBar menuBar = new MenuBar(createFileMenu(), createEditMenu());
+        borderPane.setTop(menuBar);
+    }
+
+    final private Menu createFileMenu() {
+        // create new game item
+        final MenuItem newGameAction = new MenuItem("New Game");
+        newGameAction.setMnemonicParsing(true);
+        newGameAction.setAccelerator(new KeyCodeCombination(KeyCode.N, KeyCombination.SHIFT_DOWN));
+        newGameAction.setOnAction((event -> newGame()));
+
+        final MenuItem exitAction = new MenuItem("Exit");
+        exitAction.setMnemonicParsing(true);
+        exitAction.setAccelerator(new KeyCodeCombination(KeyCode.F4, KeyCombination.ALT_DOWN));
+        exitAction.setOnAction((event -> Platform.exit()));
+
+        final Menu fileMenu = new Menu("File");
+        fileMenu.getItems().addAll(newGameAction, exitAction);
+        return fileMenu;
+    }
+
+    final private Menu createEditMenu() {
+
+        // create board size menu sliders
+        final MenuItem boxSizeMenu = new MenuItem("Box Size");
+        final Slider boxSizeSlider = new Slider();
+        boxSizeSlider.setMin(30);
+        boxSizeSlider.setMax(100);
+        boxSizeSlider.valueProperty().bindBidirectional(BOX_SIZE);
+        boxSizeSlider.setShowTickLabels(true);
+        boxSizeMenu.setGraphic(boxSizeSlider);
+
+        final MenuItem diskSizeMenu = new MenuItem("Disk Size");
+        final Slider diskSizeSlider = new Slider();
+        diskSizeSlider.setMin(0);
+        diskSizeSlider.setMax(100);
+        diskSizeSlider.setValue(85);
+        DISK_SIZE.bind(diskSizeSlider.valueProperty().divide(200));
+        diskSizeSlider.setShowTickLabels(true);
+        diskSizeMenu.setGraphic(diskSizeSlider);
+
+        final Menu sizeMenu = new Menu("Size");
+        sizeMenu.getItems().addAll(boxSizeMenu, diskSizeMenu);
+
+        final Menu editMenu = new Menu("Edit");
+        editMenu.getItems().addAll(sizeMenu);
+
+        return editMenu;
     }
 
     final private void createLeft(BorderPane borderPane) {
@@ -123,7 +218,13 @@ public class Main extends Application {
         vBox.setPadding(new Insets(10));
         vBox.setAlignment(Pos.TOP_CENTER);
 
-        borderPane.setLeft(vBox);
+        // create titled pane
+        TitledPane titledPane = new TitledPane();
+        titledPane.getStyleClass().add("static-group");
+        titledPane.setText("Left Side Statics");
+        titledPane.setContent(vBox);
+
+        borderPane.setLeft(titledPane);
     }
 
     final private void createRight(BorderPane borderPane) {
@@ -136,8 +237,16 @@ public class Main extends Application {
         vBox.setPadding(new Insets(10));
         vBox.setAlignment(Pos.TOP_CENTER);
 
-        borderPane.setRight(vBox);
+        // create titled pane
+        TitledPane titledPane = new TitledPane();
+        titledPane.getStyleClass().add("static-group");
+        titledPane.setText("Right Side Statics");
+        titledPane.setContent(vBox);
+
+        borderPane.setRight(titledPane);
     }
+    // end of UI of the game
+
 
     final private void initiate() {
         // set the colors of hover rectangle
@@ -145,6 +254,8 @@ public class Main extends Application {
             rectangle.setStrokeWidth(5);
             rectangle.setStroke(Color.rgb(0, 200, 250, 0.8));
             rectangle.setFill(null);
+            rectangle.widthProperty().bind(BOX_SIZE);
+            rectangle.heightProperty().bind(BOX_SIZE);
         }
 
         for (Rectangle rectangle : new Rectangle[]{leftValidBox, rightValidBox}) {
@@ -152,10 +263,44 @@ public class Main extends Application {
             rectangle.setStroke(Color.LAWNGREEN);
             rectangle.setStrokeWidth(5);
             rectangle.setStrokeType(StrokeType.INSIDE);
+            // set the size properties
+            rectangle.widthProperty().bind(BOX_SIZE);
+            rectangle.heightProperty().bind(BOX_SIZE);
         }
 
         leftPane.getChildren().addAll(leftHoverBox);
         rightPane.getChildren().addAll(rightHoverBox);
+
+        // add listeners to king property changes
+        damModel.getKingProperty().addListener(new ChangeListener<Disk>() {
+            @Override
+            public void changed(ObservableValue<? extends Disk> observable, Disk oldValue, Disk newValue) {
+                // set the disk image as king image
+                // first get the disk image
+                int diskIndex = damModel.getDiskIndex(newValue.getPosition(), damModel.getCurrentSide());
+                Ellipse kingDisk = null;
+                Ellipse mirrorKingDisk = null;
+                if (damModel.getCurrentSide() == Side.WHITE) {
+                    kingDisk = getDiskImageByIndex(whiteDisks, diskIndex);
+                    mirrorKingDisk = whiteDisks.get(kingDisk);
+
+                    kingDisk.fillProperty().bind(gameColorMap.get("WHITE-KING"));
+                    mirrorKingDisk.fillProperty().bind(gameColorMap.get("WHITE-KING"));
+                } else {
+                    kingDisk = getDiskImageByIndex(blackDisks, diskIndex);
+                    mirrorKingDisk = blackDisks.get(kingDisk);
+
+                    kingDisk.fillProperty().bind(gameColorMap.get("BLACK-KING"));
+                    mirrorKingDisk.fillProperty().bind(gameColorMap.get("BLACK-KING"));
+                }
+
+            }
+        });
+
+        // add listeners to side property of the dam model
+        damModel.currentSideProperty().addListener(((observable, oldValue, newValue) -> {
+            updateIndicators();
+        }));
     }
 
     private final void initiateSettings() {
@@ -163,8 +308,12 @@ public class Main extends Application {
         gameColorMap.put("BLACK-BOX", new SimpleObjectProperty<>(Color.BLACK));
         gameColorMap.put("WHITE-DISK", new SimpleObjectProperty<>(Color.DARKBLUE));
         gameColorMap.put("BLACK-DISK", new SimpleObjectProperty<>(Color.ORANGERED));
+        gameColorMap.put("WHITE-KING", new SimpleObjectProperty<Color>(Color.GOLD));
+        gameColorMap.put("BLACK-KING", new SimpleObjectProperty<Color>(Color.MEDIUMPURPLE));
 
     }
+    // end of the settings side of the game
+
 
     private final void drawLayout() {
         // first clear the layout
@@ -179,8 +328,11 @@ public class Main extends Application {
             for (int i = 0; i < damModel.BOARD_SIZE; i++) {
                 for (int j = 0; j < damModel.BOARD_SIZE; j++) {
                     // draw the rectangles
-                    Rectangle rectangle = new Rectangle(j * BOX_SIZE.getValue(), i * BOX_SIZE.getValue(),
-                            BOX_SIZE.getValue(), BOX_SIZE.getValue());
+                    Rectangle rectangle = new Rectangle();
+                    rectangle.widthProperty().bind(BOX_SIZE);
+                    rectangle.heightProperty().bind(BOX_SIZE);
+                    rectangle.xProperty().bind(BOX_SIZE.multiply(j));
+                    rectangle.yProperty().bind(BOX_SIZE.multiply(i));
                     rectangle.fillProperty().bind(color);
                     rectangle.setStrokeWidth(0);
                     // append to box list
@@ -193,13 +345,6 @@ public class Main extends Application {
                 }
                 color = color == gameColorMap.get("WHITE-BOX") ? gameColorMap.get("BLACK-BOX") : gameColorMap.get("WHITE-BOX");
             }
-            // draw margin of board
-            Rectangle marginRect = new Rectangle(0, 0, pane.getPrefWidth(), pane.getPrefHeight());
-            marginRect.setFill(null);
-            marginRect.setStrokeWidth(15);
-            marginRect.setStroke(Color.RED);
-
-//            pane.getChildren().add(marginRect);
         }
     }
 
@@ -221,8 +366,10 @@ public class Main extends Application {
             Ellipse activeDisk = createDisk(whiteDisk, Side.WHITE, true);
             Ellipse mirrorDisk = createDisk(whiteDisk, Side.BLACK, false);
             // set user data
-            activeDisk.setUserData(String.format("%s.%d", whiteSymbol, i));
-            mirrorDisk.setUserData(String.format("%s.%d", whiteSymbol, i));
+            activeDisk.setUserData(whiteDisk);
+            mirrorDisk.setUserData(whiteDisk);
+
+            whiteDisk.setDiskImages(activeDisk, mirrorDisk); // set the disk images to disk object
 
             // add to disk map
             whiteDisks.put(activeDisk, mirrorDisk);
@@ -239,8 +386,10 @@ public class Main extends Application {
             Ellipse activeDisk = createDisk(blackDisk, Side.BLACK, true);
             Ellipse mirrorDisk = createDisk(blackDisk, Side.WHITE, false);
             // set user data
-            activeDisk.setUserData(String.format("%s.%d", blackSymbol, i));
-            mirrorDisk.setUserData(String.format("%s.%d", blackSymbol, i));
+            activeDisk.setUserData(blackDisk);
+            mirrorDisk.setUserData(blackDisk);
+
+            blackDisk.setDiskImages(activeDisk, mirrorDisk); // set disk images for disk object
 
             // add to the disk map
             blackDisks.put(activeDisk, mirrorDisk);
@@ -271,6 +420,10 @@ public class Main extends Application {
             diskImage.fillProperty().bind(gameColorMap.get("WHITE-DISK"));
         } else if (disk.getDiskType() == DiskType.BLACK) {
             diskImage.fillProperty().bind(gameColorMap.get("BLACK-DISK"));
+        } else if (disk.getDiskType() == DiskType.WHITE_KING) {
+            diskImage.fillProperty().bind(gameColorMap.get("WHITE-KING"));
+        } else {
+            diskImage.fillProperty().bind(gameColorMap.get("BLACK-KING"));
         }
         diskImage.setStroke(null);
 
@@ -301,7 +454,6 @@ public class Main extends Application {
         disk.centerYProperty().bind(BOX_SIZE.multiply(Y + 0.5));
     }
 
-
     final private Position getCurrentPosition(MouseEvent event) {
         // calculate the position using the coordinates
         double x = (event.getX() / BOX_SIZE.intValue());
@@ -330,6 +482,7 @@ public class Main extends Application {
         return new Position(X, Y);
     }
 
+    // mouse event listeners for disk
     final private void leftPaneMouseMoved(MouseEvent event) {
         Position currentPosition = getCurrentPosition(event);
         if (!currentPosition.isValid()) {
@@ -338,8 +491,7 @@ public class Main extends Application {
 
         leftPositionLabel.setText(String.format("X : %d%nY : %d", currentPosition.getX(), currentPosition.getY()));
 
-        leftHoverBox.setX(currentPosition.getX() * BOX_SIZE.getValue());
-        leftHoverBox.setY((DamModel.BOARD_SIZE - 1 - currentPosition.getY()) * BOX_SIZE.getValue());
+        setBoxPosition(leftHoverBox, currentPosition);
         if (!leftPane.getChildren().contains(leftHoverBox)) {
             leftPane.getChildren().add(leftHoverBox);
         }
@@ -354,9 +506,7 @@ public class Main extends Application {
 
         rightPositionLabel.setText(String.format("X : %d%nY : %d", currentPosition.getX(), currentPosition.getY()));
 
-        rightHoverBox.setX(currentPosition.getX() * BOX_SIZE.getValue());
-        rightHoverBox.setY((DamModel.BOARD_SIZE - 1 - currentPosition.getY()) * BOX_SIZE.getValue());
-
+        setBoxPosition(rightHoverBox, currentPosition);
         if (!rightPane.getChildren().contains(rightHoverBox)) {
             rightPane.getChildren().add(rightHoverBox);
         }
@@ -384,31 +534,33 @@ public class Main extends Application {
         if (position.isValid()) {
             // get disk image
             Ellipse diskImage = (Ellipse) event.getSource();
-            Ellipse mirrorImage = null;
-            // check if in the right board
-            if (damModel.getCurrentSide() == Side.WHITE && whiteDisks.containsKey(diskImage)) {
-                mirrorImage = whiteDisks.get(diskImage);
-            } else if (damModel.getCurrentSide() == Side.BLACK && blackDisks.containsKey(diskImage)) {
-                mirrorImage = blackDisks.get(diskImage);
-            } else {
-                return;
+            if (checkSide(diskImage)) {
+                Ellipse mirrorImage = null;
+                // check if in the right board
+                if (damModel.getCurrentSide() == Side.WHITE && whiteDisks.containsKey(diskImage)) {
+                    mirrorImage = whiteDisks.get(diskImage);
+                } else if (damModel.getCurrentSide() == Side.BLACK && blackDisks.containsKey(diskImage)) {
+                    mirrorImage = blackDisks.get(diskImage);
+                } else {
+                    return;
+                }
+
+                // set new position
+                diskImage.centerXProperty().unbind();
+                diskImage.centerYProperty().unbind();
+                mirrorImage.centerXProperty().unbind();
+                mirrorImage.centerYProperty().unbind();
+
+                diskImage.setCenterX(event.getX());
+                diskImage.setCenterY(event.getY());
+                mirrorImage.setCenterX(BOX_SIZE.getValue() * DamModel.BOARD_SIZE - event.getX());
+                mirrorImage.setCenterY(BOX_SIZE.get() * DamModel.BOARD_SIZE - event.getY());
+
+                setValidBox(diskImage, position); // show the valid places by highlight the suitable places
+                // bring the these two disks to front of the boards
+                diskImage.toFront();
+                mirrorImage.toFront();
             }
-
-            // set new position
-            diskImage.centerXProperty().unbind();
-            diskImage.centerYProperty().unbind();
-            mirrorImage.centerXProperty().unbind();
-            mirrorImage.centerYProperty().unbind();
-
-            diskImage.setCenterX(event.getX());
-            diskImage.setCenterY(event.getY());
-            mirrorImage.setCenterX(BOX_SIZE.getValue() * DamModel.BOARD_SIZE - event.getX());
-            mirrorImage.setCenterY(BOX_SIZE.get() * DamModel.BOARD_SIZE - event.getY());
-
-            setValidBox(diskImage, position);
-
-            diskImage.toFront();
-            mirrorImage.toFront();
         }
     }
 
@@ -446,80 +598,68 @@ public class Main extends Application {
 
         if (currentPosition.isValid()) {
             // validate position
-            if (damModel.isEmptyPosition(currentPosition, damModel.getCurrentSide())) {
+            if (damModel.isBlankPosition(currentPosition, damModel.getCurrentSide())) {
                 // next check if the new position is valid position
-                MoveType diskMove = damModel.move(damModel.getDisk((String) activeDisk.getUserData()), currentPosition);
-                if (diskMove == MoveType.INVALID) {
-                    bindAgain(activeDisk);
-                } else if (diskMove == MoveType.NORMAL) {
-                    // set new position
-                    bindAgainForMove(activeDisk);
-                } else if (diskMove == MoveType.CUTTED) {
-                    // set new position and remove unwanted disk
-                    bindAgain(activeDisk);
-                    // hide the removed disk
-                    int index = damModel.getDiskIndex(damModel.getLastRemovedDisk().getPosition(),
-                            damModel.getCurrentSide() == Side.WHITE ? Side.BLACK : Side.WHITE);
-                    Ellipse removedDisk = null;
-                    Ellipse mirrorRemovedDisk = null;
-                    if (damModel.getCurrentSide() == Side.WHITE) {
-                        removedDisk = getDiskImageByIndex(blackDisks, index);
-                        mirrorRemovedDisk = blackDisks.get(removedDisk);
-                    } else {
-                        removedDisk = getDiskImageByIndex(whiteDisks, index);
-                        mirrorRemovedDisk = whiteDisks.get(removedDisk);
-                    }
-                    removedDisk.setVisible(false);
-                    mirrorRemovedDisk.setVisible(false);
+                MoveType diskMove = damModel.move((Disk) activeDisk.getUserData(), currentPosition);
 
-                } else {
-                    bindAgain(activeDisk);
+//                bindAgain(activeDisk);
+
+                if (diskMove == MoveType.CUTTED) {
+//                    // hide the removed disk
+//                    int index = damModel.getDiskIndex(damModel.getLastRemovedDisk().getPosition(),
+//                            damModel.getCurrentSide() == Side.WHITE ? Side.BLACK : Side.WHITE);
+//                    Ellipse removedDisk = null;
+//                    Ellipse mirrorRemovedDisk = null;
+//                    if (damModel.getCurrentSide() == Side.WHITE) {
+//                        removedDisk = getDiskImageByIndex(blackDisks, index);
+//                        mirrorRemovedDisk = blackDisks.get(removedDisk);
+//
+//                        rightDiskBar.addDisk(DiskType.BLACK);
+//                    } else {
+//                        removedDisk = getDiskImageByIndex(whiteDisks, index);
+//                        mirrorRemovedDisk = whiteDisks.get(removedDisk);
+//
+//                        leftDiskBar.addDisk(DiskType.WHITE);
+//                    }
+//                    removedDisk.setVisible(false);
+//                    mirrorRemovedDisk.setVisible(false);
+
+                    damModel.getLastRemovedDisk().getActiveDisk().setVisible(false);
+                    damModel.getLastRemovedDisk().getMirrorDisk().setVisible(false);
+
+
+                }
+                else if (diskMove == MoveType.KING_CUTTED) {
                     // king cutting
                     System.out.println("King Move");
                 }
-            } else {
-                bindAgain(activeDisk);
             }
-        } else {
-            bindAgain(activeDisk);
         }
+        bindAgain(activeDisk);
     }
+
+
 
     private void bindAgain(Ellipse activeDisk) {
 
-        Ellipse mirrorDisk = null;
-        // disk bind again to the previous data
-        if (damModel.getCurrentSide() == Side.WHITE) {
-            mirrorDisk = whiteDisks.get(activeDisk);
-        } else {
-            mirrorDisk = blackDisks.get(activeDisk);
-        }
-
+        Ellipse mirrorDisk = ((Disk) activeDisk.getUserData()).getMirrorDisk();
         // get Model Disk object relative to disk image
-        Disk disk = damModel.getDisk((String) activeDisk.getUserData());
+        Disk disk = (Disk) activeDisk.getUserData();
 
         // now bind the disk images
         bindPosition(activeDisk, disk.getPosition());
-        bindPosition(mirrorDisk, Position.inverse(disk.getPosition()));
+        bindPosition(mirrorDisk, disk.getPosition().inverse());
     }
 
-    private void bindAgainForMove(Ellipse activeDisk) {
-        Ellipse mirrorDisk = null;
-        // disk bind again to the previous data
-        if (damModel.getCurrentSide() == Side.WHITE) {
-            mirrorDisk = blackDisks.get(activeDisk);
-        } else {
-            mirrorDisk = whiteDisks.get(activeDisk);
-        }
-
-        // get Model Disk object relative to disk image
-        Disk disk = damModel.getDisk((String) activeDisk.getUserData());
-        System.out.println("disk prev position : " + disk.getPosition());
-
-        // now bind the disk images
-        bindPosition(activeDisk, disk.getPosition());
-        bindPosition(mirrorDisk, Position.inverse(disk.getPosition()));
-    }
+//    private void bindAgainForMove(Ellipse activeDisk) {
+//        Ellipse mirrorDisk = ((Disk) activeDisk.getUserData()).getMirrorDisk();
+//        // get Model Disk object relative to disk image
+//        Disk disk = damModel.getDisk((String) activeDisk.getUserData());
+//
+//        // now bind the disk images
+//        bindPosition(activeDisk, disk.getPosition());
+//        bindPosition(mirrorDisk, disk.getPosition().inverse());
+//    }
 
     private boolean checkSide(Ellipse disk) {
         if (damModel.getCurrentSide() == Side.WHITE && whiteDisks.containsKey(disk)) {
@@ -530,20 +670,7 @@ public class Main extends Application {
         return false;
     }
 
-    private Ellipse getDiskImageByIndex(HashMap<Ellipse, Ellipse> diskMap, int index) {
-        int i = 0;
-        for (Ellipse diskImage : diskMap.keySet()) {
-            if (index == getIndex(diskImage)) {
-                return diskImage;
-            }
-        }
-        return null;
-    }
-
-    private int getIndex(Ellipse diskImage) {
-        return Integer.parseInt((((String) diskImage.getUserData()).split("[.]"))[1]);
-    }
-
+    // methods for other game features
     private void setValidBox(Ellipse diskImage, Position position) {
         //
         if (damModel.determineValid(damModel.getDisk((String) diskImage.getUserData()), position)) {
@@ -564,7 +691,6 @@ public class Main extends Application {
             }
             if (!rightPane.getChildren().contains(rightValidBox)) {
                 rightPane.getChildren().add(rightValidBox);
-                ;
             }
         } else {
             // hide the rectangles
@@ -582,5 +708,15 @@ public class Main extends Application {
         // now bind the property
         box.setX(BOX_SIZE.getValue() * X);
         box.setY(BOX_SIZE.getValue() * Y);
+    }
+
+    private void updateIndicators() {
+        if (damModel.getCurrentSide() == Side.WHITE) {
+            leftIndicator.setFill(Color.GREEN);
+            rightIndicator.setFill(Color.RED);
+        } else {
+            leftIndicator.setFill(Color.RED);
+            rightIndicator.setFill(Color.GREEN);
+        }
     }
 }

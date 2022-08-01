@@ -16,6 +16,10 @@ public class Position {
         return new Position(DamModel.BOARD_SIZE - 1 - position.getX(), DamModel.BOARD_SIZE - 1 - position.getY());
     }
 
+    public Position inverse(){
+        return new Position(DamModel.BOARD_SIZE - 1 - this.getX(), DamModel.BOARD_SIZE - 1 - this.getY());
+    }
+
     public int getX(){
         return X;
     }
