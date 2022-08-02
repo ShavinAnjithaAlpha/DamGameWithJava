@@ -1,9 +1,30 @@
 .root {
-    -fx-background-color: rgb(40, 40, 40);
+    -fx-base : rgb(10, 10, 10);
+    -fx-accent : rgba(0, 100, 250, 0.7);
+    -fx-default-button : blue;
+    -fx-focus-color : #efefef;
+    -fx-faint-focus-color : #efefef22;
+    -fx-focused-text-base-color : ladder(
+                -fx-selection-bar,
+                -fx-light-text-color 45%,
+                -fx-dark-text-color 46%,
+                -fx-dark-text-color 59%,
+                -fx-mid-text-color 60%
+    );
+    -fx-background: rgb(25, 25, 25);
+    -fx-focused-mark-color : -fx-focused-text-base-color;
+    -fx-control-inner-background : derive(-fx-base, 35%);
+}
+
+.label {
+    -fx-text-fill: rgba(255, 255, 255, 0.8);
+    -fx-font-size: 18px;
+    -fx-font-family : "Fira Code Medium";
+    -fx-background-color: null;
 }
 
 #left-position-label, #right-position-label {
-    -fx-text-fill: skyblue;
+    -fx-text-fill: white;
     -fx-font-size:30px;
     -fx-background-color: rgb(50, 0, 100);
     -fx-padding: 50px;
@@ -11,7 +32,27 @@
     -fx-font-family: "Helvetica";
 }
 
-.static-group {
-    -fx-background-color: blue;
-    -fx-border-width: 0px;
+.titled-pane {
+    -fx-text-fill : -fx-text-base-color;
+}
+
+.titled-pane:focused {
+    -fx-text-fill : white;
+}
+
+.titled-pane > .title {
+    -fx-background-color: rgb(10, 10, 10);
+    -fx-background-insets: 0, 1, 2;
+    -fx-background-radius: 5 5 0 0, 4 4 0 0, 3 3 0 0;
+
+}
+
+.titled-pane:collapsed > .title > .arrow-button .arrow {
+    -fx-background-color: -fx-mark-highlight-color, -fx-mark-color;
+}
+
+.titled-pane > .title > .arrow-button {
+    -fx-background-color: null;
+    -fx-background-insets: 0;
+    -fx-background-radius: 0;
 }
