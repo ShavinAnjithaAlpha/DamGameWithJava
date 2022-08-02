@@ -364,10 +364,10 @@ public class DamModel {
     }
 
     public int getRemovedWhiteDiskCount(){
-        return BOARD_SIZE - getWhiteKingCount() - getRemainWhiteDiskCount();
+        return DISK_COUNT - getWhiteKingCount() - getRemainWhiteDiskCount();
     }
 
     public int getRemovedBlackDiskCount(){
-        return BOARD_SIZE - getBlackKingCount() - getRemainBlackDiskCount();
+        return DISK_COUNT - getBlackKingCount() - getRemainBlackDiskCount();
     }
 }

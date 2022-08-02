@@ -1,6 +1,6 @@
 .root {
     -fx-base : rgb(10, 10, 10);
-    -fx-accent : rgba(0, 100, 250, 0.7);
+    -fx-accent : rgba(0, 120, 250, 0.7);
     -fx-default-button : blue;
     -fx-focus-color : #efefef;
     -fx-faint-focus-color : #efefef22;
@@ -26,10 +26,14 @@
 #left-position-label, #right-position-label {
     -fx-text-fill: white;
     -fx-font-size:30px;
-    -fx-background-color: rgb(50, 0, 100);
-    -fx-padding: 50px;
-    -fx-border-radius: 8px;
-    -fx-font-family: "Helvetica";
+    -fx-padding: 5px;
+}
+
+.static-label {
+    -fx-text-fill: white;
+    -fx-font-size: 30px;
+    -fx-font-weight: bold;
+    -fx-padding: 5px;
 }
 
 .titled-pane {

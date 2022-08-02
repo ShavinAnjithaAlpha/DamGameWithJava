@@ -14,10 +14,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.effect.*;
 import javafx.scene.input.*;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Pane;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Ellipse;
 import javafx.scene.shape.Rectangle;
@@ -47,6 +44,8 @@ public class Main extends Application {
     // other nodes declarations
     private Label leftPositionLabel;
     private Label rightPositionLabel;
+    private HashMap<String, Label> staticLabels = new HashMap<>();
+
     private final Rectangle leftHoverBox = new Rectangle(BOX_SIZE.getValue(), BOX_SIZE.getValue());
     private final Rectangle rightHoverBox = new Rectangle(BOX_SIZE.getValue(), BOX_SIZE.getValue());
 
@@ -128,8 +127,6 @@ public class Main extends Application {
 
         for (Rectangle indicator : new Rectangle[]{leftIndicator, rightIndicator}) {
             indicator.setHeight(25);
-            indicator.setArcWidth(20);
-            indicator.setArcHeight(20);
 
             indicator.setEffect(new DropShadow(5, Color.GREY));
 
@@ -151,7 +148,7 @@ public class Main extends Application {
         hBox2.setAlignment(Pos.TOP_CENTER);
 
         VBox vBox = new VBox(hBox, hBox1, hBox2);
-        vBox.setSpacing(20);
+        vBox.setSpacing(0);
 
         borderPane.setCenter(vBox);
     }
@@ -214,10 +211,32 @@ public class Main extends Application {
         leftPositionLabel = new Label();
         leftPositionLabel.setId("left-position-label");
 
-        VBox vBox = new VBox(leftPositionLabel);
-        vBox.setPrefWidth(200);
-        vBox.setPadding(new Insets(10));
-        vBox.setAlignment(Pos.TOP_CENTER);
+        // create other statics labels
+        Label diskCountLabel = new Label();
+        diskCountLabel.getStyleClass().add("static-label");
+
+        Label kingCountLabel = new Label();
+        kingCountLabel.getStyleClass().add("static-label");
+
+        Label removedCountLabel = new Label();
+        removedCountLabel.getStyleClass().add("static-label");
+
+        staticLabels.put("WHITE", diskCountLabel);
+        staticLabels.put("WHITE-KING", kingCountLabel);
+        staticLabels.put("BLACK-REMOVE", removedCountLabel);
+
+        VBox vBox = new VBox(
+                new Label("Position"),
+                leftPositionLabel,
+                new Label("Current Disks"),
+                diskCountLabel,
+                new Label("Current Kings"),
+                kingCountLabel,
+                new Label("Removed Disk"),
+                removedCountLabel
+        );
+        vBox.setSpacing(5);
+        vBox.setAlignment(Pos.TOP_LEFT);
 
         // create titled pane
         TitledPane titledPane = new TitledPane();
@@ -233,11 +252,33 @@ public class Main extends Application {
         rightPositionLabel = new Label();
         rightPositionLabel.setId("right-position-label");
 
-        VBox vBox = new VBox(rightPositionLabel);
-        vBox.setPrefWidth(200);
-        vBox.setPadding(new Insets(10));
-        vBox.setAlignment(Pos.TOP_CENTER);
+        // create other statics labels
+        Label diskCountLabel = new Label();
+        diskCountLabel.getStyleClass().add("static-label");
 
+        Label kingCountLabel = new Label();
+        kingCountLabel.getStyleClass().add("static-label");
+
+        Label removedCountLabel = new Label();
+        removedCountLabel.getStyleClass().add("static-label");
+
+        staticLabels.put("BLACK", diskCountLabel);
+        staticLabels.put("BLACK-KING", kingCountLabel);
+        staticLabels.put("WHITE-REMOVE", removedCountLabel);
+
+
+        VBox vBox = new VBox(
+                new Label("Position"),
+                rightPositionLabel,
+                new Label("Current Disks"),
+                diskCountLabel,
+                new Label("Current Kings"),
+                kingCountLabel,
+                new Label("Removed Disk"),
+                removedCountLabel
+        );
+        vBox.setSpacing(5);
+        vBox.setAlignment(Pos.TOP_LEFT);
         // create titled pane
         TitledPane titledPane = new TitledPane();
         titledPane.getStyleClass().add("static-group");
@@ -416,6 +457,11 @@ public class Main extends Application {
             i++;
         }
 
+        // update statics labels
+        updateStaticticsLabels();
+        leftPositionLabel.setText("None");
+        rightPositionLabel.setText("None");
+
     }
 
     final private Ellipse createDisk(Disk disk, Side side, boolean active) {
@@ -505,7 +551,7 @@ public class Main extends Application {
             return;
         }
 
-        leftPositionLabel.setText(String.format("X : %d%nY : %d", currentPosition.getX(), currentPosition.getY()));
+        leftPositionLabel.setText(String.format("(%d, %d)", currentPosition.getX(), currentPosition.getY()));
 
         setBoxPosition(leftHoverBox, currentPosition);
         if (!leftPane.getChildren().contains(leftHoverBox)) {
@@ -520,7 +566,7 @@ public class Main extends Application {
             return;
         }
 
-        rightPositionLabel.setText(String.format("X : %d%nY : %d", currentPosition.getX(), currentPosition.getY()));
+        rightPositionLabel.setText(String.format("(%d, %d)", currentPosition.getX(), currentPosition.getY()));
 
         setBoxPosition(rightHoverBox, currentPosition);
         if (!rightPane.getChildren().contains(rightHoverBox)) {
@@ -609,6 +655,8 @@ public class Main extends Application {
             if (damModel.isBlankPosition(currentPosition, damModel.getCurrentSide())) {
                 // next check if the new position is valid position
                 MoveType diskMove = damModel.move((Disk) activeDisk.getUserData(), currentPosition);
+                // update the satictics labels
+                updateStaticticsLabels();
             }
         }
         bindAgain(activeDisk);
@@ -678,11 +726,22 @@ public class Main extends Application {
 
     private void updateIndicators() {
         if (damModel.getCurrentSide() == Side.WHITE) {
-            leftIndicator.setFill(Color.GREEN);
+            leftIndicator.setFill(Color.LAWNGREEN);
             rightIndicator.setFill(Color.RED);
         } else {
             leftIndicator.setFill(Color.RED);
-            rightIndicator.setFill(Color.GREEN);
+            rightIndicator.setFill(Color.LAWNGREEN);
         }
+    }
+
+    private void updateStaticticsLabels(){
+
+        staticLabels.get("WHITE").setText("" + damModel.getRemainWhiteDiskCount());
+        staticLabels.get("BLACK").setText("" + damModel.getRemainBlackDiskCount());
+        staticLabels.get("WHITE-KING").setText("" + damModel.getWhiteKingCount());
+        staticLabels.get("BLACK-KING").setText("" + damModel.getBlackKingCount());
+        staticLabels.get("BLACK-REMOVE").setText("" + damModel.getRemovedBlackDiskCount());
+        staticLabels.get("WHITE-REMOVE").setText("" + damModel.getRemovedWhiteDiskCount());
+
     }
 }
