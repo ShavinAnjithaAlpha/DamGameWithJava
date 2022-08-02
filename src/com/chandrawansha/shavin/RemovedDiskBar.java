@@ -1,8 +1,6 @@
 package com.chandrawansha.shavin;
 
 import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleMapProperty;
-import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.ObservableMap;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.Pane;
@@ -15,8 +13,9 @@ import java.util.ArrayList;
 public class RemovedDiskBar extends Pane {
 
     private double currentPosition = 0;
-    private ArrayList<Ellipse> diskArray = new ArrayList<>();
-    private ObservableMap<String, ObjectProperty<Color>> colorMap;
+    private double height = space + diskRadius;
+    private final ArrayList<Ellipse> diskArray = new ArrayList<>();
+    private final ObservableMap<String, ObjectProperty<Color>> colorMap;
 
     private final static double diskRadius = 30;
     private final static double space = 10;
@@ -24,7 +23,7 @@ public class RemovedDiskBar extends Pane {
     public RemovedDiskBar(ObservableMap<String, ObjectProperty<Color>> colorMap) {
         super();
         this.colorMap = colorMap;
-        setPrefHeight(100);
+        setPrefHeight(300);
 
         // create rectangle to fill the pane
         final Rectangle fillRectangle = new Rectangle();
@@ -41,7 +40,7 @@ public class RemovedDiskBar extends Pane {
     public void addDisk(DiskType disk) {
         // create disk image
         currentPosition += (space + diskRadius);
-        Ellipse diskImage = new Ellipse(currentPosition, getHeight() / 2, diskRadius, diskRadius);
+        Ellipse diskImage = new Ellipse(currentPosition, height, diskRadius, diskRadius);
 
         if (disk == DiskType.WHITE) {
             diskImage.fillProperty().bind(colorMap.get("WHITE-DISK"));
@@ -58,15 +57,16 @@ public class RemovedDiskBar extends Pane {
         // add to the list
         diskArray.add(diskImage);
 
+        if (diskArray.size() >= 10)
+            height += (2 * diskRadius + space);
         currentPosition += (diskRadius + space);
     }
 
     public void clear() {
-        diskArray.forEach((Ellipse diskImage) -> {
-            getChildren().remove(diskImage);
-        });
+        diskArray.forEach((Ellipse diskImage) -> getChildren().remove(diskImage));
         // clear the disk array
         diskArray.clear();
         currentPosition = 0;
+        height = space + diskRadius;
     }
 }

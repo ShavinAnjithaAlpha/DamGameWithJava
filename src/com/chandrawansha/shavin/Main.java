@@ -19,7 +19,10 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Ellipse;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.StrokeType;
+import javafx.stage.Modality;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
+import javafx.util.Callback;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -32,19 +35,19 @@ public class Main extends Application {
     private static final String whiteSymbol = "W";
     private static final String blackSymbol = "B";
 
-    private DamModel damModel = new DamModel();
+    private final DamModel damModel = new DamModel();
     private Pane leftPane;
     private Pane rightPane;
 
     private final HashMap<Ellipse, Ellipse> whiteDisks = new HashMap<>();
     private final HashMap<Ellipse, Ellipse> blackDisks = new HashMap<>();
 
-    private ArrayList<Rectangle> layoutBoxes = new ArrayList<>();
+    private final ArrayList<Rectangle> layoutBoxes = new ArrayList<>();
 
     // other nodes declarations
     private Label leftPositionLabel;
     private Label rightPositionLabel;
-    private HashMap<String, Label> staticLabels = new HashMap<>();
+    private final HashMap<String, Label> staticLabels = new HashMap<>();
 
     private final Rectangle leftHoverBox = new Rectangle(BOX_SIZE.getValue(), BOX_SIZE.getValue());
     private final Rectangle rightHoverBox = new Rectangle(BOX_SIZE.getValue(), BOX_SIZE.getValue());
@@ -68,7 +71,7 @@ public class Main extends Application {
     }
 
     @Override
-    public void start(Stage primaryStage) throws Exception {
+    public void start(Stage primaryStage){
         // create border pane
         final BorderPane borderPane = new BorderPane();
 
@@ -86,31 +89,32 @@ public class Main extends Application {
         // start the new game
         newGame();
 
-        Scene scene = new Scene(borderPane);
-        scene.getStylesheets().add(getClass().getResource("style.css").toExternalForm());
+        Scene scene = new Scene(borderPane, Screen.getPrimary().getBounds().getWidth(), Screen.getPrimary().getBounds().getHeight());
+        scene.getStylesheets().add(getClass().getResource("style.css").toString());
+
         // create new Scene and attach to primary stage
         primaryStage.setScene(scene);
         primaryStage.setTitle("Dam Game");
         primaryStage.show();
     }
 
-    final private void createCenter(BorderPane borderPane) {
+    private void createCenter(BorderPane borderPane) {
         // build the basic dam board in here
         // create two panes using box sizes
         leftPane = new Pane();
-        leftPane.minWidthProperty().bind(BOX_SIZE.multiply(damModel.BOARD_SIZE));
-        leftPane.minHeightProperty().bind(BOX_SIZE.multiply(damModel.BOARD_SIZE));
-        leftPane.maxWidthProperty().bind(BOX_SIZE.multiply(damModel.BOARD_SIZE));
-        leftPane.maxHeightProperty().bind(BOX_SIZE.multiply(damModel.BOARD_SIZE));
+        leftPane.minWidthProperty().bind(BOX_SIZE.multiply(DamModel.BOARD_SIZE));
+        leftPane.minHeightProperty().bind(BOX_SIZE.multiply(DamModel.BOARD_SIZE));
+        leftPane.maxWidthProperty().bind(BOX_SIZE.multiply(DamModel.BOARD_SIZE));
+        leftPane.maxHeightProperty().bind(BOX_SIZE.multiply(DamModel.BOARD_SIZE));
         leftPane.setId("left-pane");
         // bind the mouse event listeners
         leftPane.setOnMouseMoved(this::leftPaneMouseMoved);
 
         rightPane = new Pane();
-        rightPane.minWidthProperty().bind(BOX_SIZE.multiply(damModel.BOARD_SIZE));
-        rightPane.minHeightProperty().bind(BOX_SIZE.multiply(damModel.BOARD_SIZE));
-        rightPane.maxWidthProperty().bind(BOX_SIZE.multiply(damModel.BOARD_SIZE));
-        rightPane.maxHeightProperty().bind(BOX_SIZE.multiply(damModel.BOARD_SIZE));
+        rightPane.minWidthProperty().bind(BOX_SIZE.multiply(DamModel.BOARD_SIZE));
+        rightPane.minHeightProperty().bind(BOX_SIZE.multiply(DamModel.BOARD_SIZE));
+        rightPane.maxWidthProperty().bind(BOX_SIZE.multiply(DamModel.BOARD_SIZE));
+        rightPane.maxHeightProperty().bind(BOX_SIZE.multiply(DamModel.BOARD_SIZE));
         rightPane.setId("right-pane");
         // bind the mouse move event listeners
         rightPane.setOnMouseMoved(this::rightPaneMouseMoved);
@@ -153,14 +157,14 @@ public class Main extends Application {
         borderPane.setCenter(vBox);
     }
 
-    final private void createTop(BorderPane borderPane) {
+    private void createTop(BorderPane borderPane) {
 
         // create the menu bar
         final MenuBar menuBar = new MenuBar(createFileMenu(), createEditMenu());
         borderPane.setTop(menuBar);
     }
 
-    final private Menu createFileMenu() {
+    private Menu createFileMenu() {
         // create new game item
         final MenuItem newGameAction = new MenuItem("New Game");
         newGameAction.setMnemonicParsing(true);
@@ -177,7 +181,10 @@ public class Main extends Application {
         return fileMenu;
     }
 
-    final private Menu createEditMenu() {
+    private Menu createEditMenu() {
+
+        final MenuItem colorMenuItem = new MenuItem("Color Settings");
+        colorMenuItem.setOnAction((event -> createColorDialog()));
 
         // create board size menu sliders
         final MenuItem boxSizeMenu = new MenuItem("Box Size");
@@ -201,12 +208,12 @@ public class Main extends Application {
         sizeMenu.getItems().addAll(boxSizeMenu, diskSizeMenu);
 
         final Menu editMenu = new Menu("Edit");
-        editMenu.getItems().addAll(sizeMenu);
+        editMenu.getItems().addAll(colorMenuItem, sizeMenu);
 
         return editMenu;
     }
 
-    final private void createLeft(BorderPane borderPane) {
+    void createLeft(BorderPane borderPane) {
         // create labels for display current position dam board
         leftPositionLabel = new Label();
         leftPositionLabel.setId("left-position-label");
@@ -247,7 +254,7 @@ public class Main extends Application {
         borderPane.setLeft(titledPane);
     }
 
-    final private void createRight(BorderPane borderPane) {
+    private void createRight(BorderPane borderPane) {
         // create label for display current position of dam board
         rightPositionLabel = new Label();
         rightPositionLabel.setId("right-position-label");
@@ -287,10 +294,76 @@ public class Main extends Application {
 
         borderPane.setRight(titledPane);
     }
+
+    private void createColorDialog(){
+
+        // create dialog for change the dam game color pellate
+        Dialog<Boolean> dialogPane = new Dialog<>();
+        dialogPane.initModality(Modality.WINDOW_MODAL);
+        dialogPane.setTitle("Color Settings");
+
+        // create color pickers for various color settings
+        ColorPicker whiteDiskColor = new ColorPicker(gameColorMap.get("WHITE-DISK").getValue());
+        whiteDiskColor.valueProperty().addListener(((observable, oldValue, newValue) ->
+            gameColorMap.get("WHITE-DISK").set(newValue)
+        ));
+
+        ColorPicker blackDiskColor = new ColorPicker(gameColorMap.get("BLACK-DISK").getValue());
+        blackDiskColor.valueProperty().addListener(((observable, oldValue, newValue) ->
+            gameColorMap.get("BLACK-DISK").set(newValue)
+        ));
+
+        ColorPicker whiteBoxColor = new ColorPicker(gameColorMap.get("WHITE-BOX").getValue());
+        whiteBoxColor.valueProperty().addListener(((observable, oldValue, newValue) ->
+            gameColorMap.get("WHITE-BOX").set(newValue)
+        ));
+
+        ColorPicker blackBoxColor = new ColorPicker(gameColorMap.get("BLACK-BOX").getValue());
+        blackBoxColor.valueProperty().addListener(((observable, oldValue, newValue) ->
+            gameColorMap.get("BLACK-BOX").set(newValue)
+        ));
+
+        ColorPicker whiteKingColor = new ColorPicker(gameColorMap.get("WHITE-KING").getValue());
+        whiteKingColor.valueProperty().addListener(((observable, oldValue, newValue) ->
+            gameColorMap.get("WHITE-KING").set(newValue)
+        ));
+
+        ColorPicker blackKingColor = new ColorPicker(gameColorMap.get("BLACK-KING").getValue());
+        blackKingColor.valueProperty().addListener(((observable, oldValue, newValue) ->
+            gameColorMap.get("BLACK-KING").set(newValue)
+        ));
+
+
+        // create grid pane for store nodes
+        GridPane gridPane = new GridPane();
+        gridPane.setVgap(10);
+        gridPane.setHgap(20);
+        gridPane.setAlignment(Pos.CENTER);
+        gridPane.add(new Label("Left Side Disk Color"), 0, 0);
+        gridPane.add(whiteDiskColor, 1, 0);
+        gridPane.add(new Label("Right Side Disk Color"), 0, 1);
+        gridPane.add(blackDiskColor, 1, 1);
+        gridPane.add(new Label("White Box Color"), 0, 2);
+        gridPane.add(whiteBoxColor, 1, 2);
+        gridPane.add(new Label("Black Box Color"), 0, 3);
+        gridPane.add(blackBoxColor, 1, 3);
+        gridPane.add(new Label("Left Side King Color"), 0, 4);
+        gridPane.add(whiteKingColor, 1, 4);
+        gridPane.add(new Label("Left Side King Color"), 0, 5);
+        gridPane.add(blackKingColor, 1, 5);
+
+        dialogPane.setGraphic(gridPane);
+        dialogPane.getDialogPane().getButtonTypes().add(new ButtonType("OK", ButtonBar.ButtonData.APPLY));
+        dialogPane.showAndWait();
+
+
+
+
+    }
     // end of UI of the game
 
 
-    final private void initiate() {
+    private void initiate() {
         // set the colors of hover rectangle
         for (Rectangle rectangle : new Rectangle[]{leftHoverBox, rightHoverBox}) {
             rectangle.setStrokeWidth(5);
@@ -337,15 +410,14 @@ public class Main extends Application {
             @Override
             public void onChanged(Change<? extends Disk> c) {
                 while (c.next()) {
-                    for (Disk disk : c.getAddedSubList()){
+                    for (Disk disk : c.getAddedSubList()) {
                         disk.getActiveDisk().setVisible(false);
                         disk.getMirrorDisk().setVisible(false);
 
                         // update the disk bars
-                        if (whiteDisks.containsKey(disk.getActiveDisk())){
+                        if (whiteDisks.containsKey(disk.getActiveDisk())) {
                             leftDiskBar.addDisk(DiskType.WHITE);
-                        }
-                        else{
+                        } else {
                             rightDiskBar.addDisk(DiskType.BLACK);
                         }
                     }
@@ -355,12 +427,12 @@ public class Main extends Application {
         });
 
         // add listeners to side property of the dam model
-        damModel.currentSideProperty().addListener(((observable, oldValue, newValue) -> {
-            updateIndicators();
-        }));
+        damModel.currentSideProperty().addListener(((observable, oldValue, newValue) ->
+            updateIndicators()
+        ));
     }
 
-    private final void initiateSettings() {
+    private void initiateSettings() {
         gameColorMap.put("WHITE-BOX", new SimpleObjectProperty<>(Color.WHITE));
         gameColorMap.put("BLACK-BOX", new SimpleObjectProperty<>(Color.BLACK));
         gameColorMap.put("WHITE-DISK", new SimpleObjectProperty<>(Color.DARKBLUE));
@@ -372,7 +444,7 @@ public class Main extends Application {
     // end of the settings side of the game
 
 
-    private final void drawLayout() {
+    private void drawLayout() {
         // first clear the layout
         for (Rectangle rectangle : layoutBoxes) {
             leftPane.getChildren().remove(rectangle);
@@ -382,8 +454,8 @@ public class Main extends Application {
         for (Pane pane : new Pane[]{leftPane, rightPane}) {
             // draw board layout with standard colors
             ObjectProperty<Color> color = gameColorMap.get("WHITE-BOX");
-            for (int i = 0; i < damModel.BOARD_SIZE; i++) {
-                for (int j = 0; j < damModel.BOARD_SIZE; j++) {
+            for (int i = 0; i < DamModel.BOARD_SIZE; i++) {
+                for (int j = 0; j < DamModel.BOARD_SIZE; j++) {
                     // draw the rectangles
                     Rectangle rectangle = new Rectangle();
                     rectangle.widthProperty().bind(BOX_SIZE);
@@ -405,7 +477,7 @@ public class Main extends Application {
         }
     }
 
-    final private void newGame() {
+    private void newGame() {
         // first clear the two panes
         leftPane.getChildren().clear();
         rightPane.getChildren().clear();
@@ -464,7 +536,7 @@ public class Main extends Application {
 
     }
 
-    final private Ellipse createDisk(Disk disk, Side side, boolean active) {
+    private Ellipse createDisk(Disk disk, Side side, boolean active) {
         // create new Ellipse
         Ellipse diskImage = new Ellipse();
         diskImage.radiusXProperty().bind(BOX_SIZE.multiply(DISK_SIZE));
@@ -505,7 +577,7 @@ public class Main extends Application {
 
     }
 
-    final private void bindPosition(Ellipse disk, Position position) {
+    private void bindPosition(Ellipse disk, Position position) {
         // bind the center X and Y coordinates to ellipse object
         // calculate pane relative coordinates of disk
         int X = position.getX();
@@ -516,7 +588,7 @@ public class Main extends Application {
         disk.centerYProperty().bind(BOX_SIZE.multiply(Y + 0.5));
     }
 
-    final private Position getCurrentPosition(MouseEvent event) {
+    private Position getCurrentPosition(MouseEvent event) {
         // calculate the position using the coordinates
         double x = (event.getX() / BOX_SIZE.intValue());
         int X;
@@ -530,7 +602,7 @@ public class Main extends Application {
         return new Position(X, Y);
     }
 
-    final private Position getCurrentPosition(DragEvent event) {
+    private Position getCurrentPosition(DragEvent event) {
         // calculate the position using the coordinates
         double x = (event.getX() / BOX_SIZE.intValue());
         int X;
@@ -545,7 +617,7 @@ public class Main extends Application {
     }
 
     // mouse event listeners for disk
-    final private void leftPaneMouseMoved(MouseEvent event) {
+    private void leftPaneMouseMoved(MouseEvent event) {
         Position currentPosition = getCurrentPosition(event);
         if (!currentPosition.isValid()) {
             return;
@@ -559,7 +631,7 @@ public class Main extends Application {
         }
     }
 
-    final private void rightPaneMouseMoved(MouseEvent event) {
+    private void rightPaneMouseMoved(MouseEvent event) {
         // calculate the position using the coordinates
         Position currentPosition = getCurrentPosition(event);
         if (!currentPosition.isValid()) {
@@ -574,7 +646,7 @@ public class Main extends Application {
         }
     }
 
-    final private void diskHover(MouseEvent event) {
+    private void diskHover(MouseEvent event) {
         Ellipse diskImage = (Ellipse) event.getSource();
         if (diskImage != null && checkSide(diskImage)) {
             diskImage.setStrokeWidth(4);
@@ -582,7 +654,7 @@ public class Main extends Application {
         }
     }
 
-    final private void diskExit(MouseEvent event) {
+    private void diskExit(MouseEvent event) {
         Ellipse ellipse = (Ellipse) event.getSource();
         if (ellipse != null) {
             ellipse.setStroke(null);
@@ -590,7 +662,7 @@ public class Main extends Application {
         }
     }
 
-    final private void diskDragged(MouseEvent event) {
+    private void diskDragged(MouseEvent event) {
         // get position
         Position position = getCurrentPosition(event);
         if (position.isValid()) {
@@ -618,7 +690,7 @@ public class Main extends Application {
         }
     }
 
-    final private void mouseReleased(MouseEvent event) {
+    private void mouseReleased(MouseEvent event) {
         // first get position
         Position currentPosition = getCurrentPosition(event);
         Ellipse activeDisk = (Ellipse) event.getSource();
@@ -633,7 +705,7 @@ public class Main extends Application {
         rightValidBox.setVisible(false);
     }
 
-    final private void dragReleased(DragEvent event) {
+    private void dragReleased(DragEvent event) {
         // first get position
         Position currentPosition = getCurrentPosition(event);
         Ellipse activeDisk = (Ellipse) event.getSource();
@@ -648,7 +720,7 @@ public class Main extends Application {
         rightValidBox.setVisible(false);
     }
 
-    final private void setDiskBehavior(Position currentPosition, Ellipse activeDisk) {
+    private void setDiskBehavior(Position currentPosition, Ellipse activeDisk) {
 
         if (currentPosition.isValid()) {
             // validate position
@@ -661,7 +733,6 @@ public class Main extends Application {
         }
         bindAgain(activeDisk);
     }
-
 
 
     private void bindAgain(Ellipse activeDisk) {
@@ -734,7 +805,7 @@ public class Main extends Application {
         }
     }
 
-    private void updateStaticticsLabels(){
+    private void updateStaticticsLabels() {
 
         staticLabels.get("WHITE").setText("" + damModel.getRemainWhiteDiskCount());
         staticLabels.get("BLACK").setText("" + damModel.getRemainBlackDiskCount());
