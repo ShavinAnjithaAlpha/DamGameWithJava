@@ -62,6 +62,11 @@ public class DamModel {
                     return true;
                 }
 
+                else if (disk.getDiskType() == DiskType.WHITE_KING || disk.getDiskType() == DiskType.BLACK_KING){
+                    // check for king move
+                    return checkForKingCut(disk, position, getCurrentSide());
+                }
+
                 else if (position.getY() == disk.getY() + 2){
 
                     // check for cut move
@@ -91,12 +96,6 @@ public class DamModel {
                     }
                 }
 
-                else{
-                    if (disk.getDiskType() == DiskType.WHITE_KING || disk.getDiskType() == DiskType.BLACK_KING) {
-                        // check for king move
-                        return checkForKingCut(disk, position, getCurrentSide());
-                    }
-                }
             }
         }
         return false;
@@ -190,14 +189,14 @@ public class DamModel {
             if (side == Side.WHITE){
                 // check relative to the white side
                 for (Disk whiteDisk : whiteSideDisks){
-                    if (newPosition.compareWithDisk(whiteDisk)){
+                    if (newPosition.compareWithDisk(whiteDisk) && whiteDisk.getDiskType() != DiskType.NULL){
                         return false;
                     }
                 }
 
                 Position inversePosition = Position.inverse(newPosition);
                 for (Disk blackDisk : blackSideDisks){
-                    if (inversePosition.compareWithDisk(blackDisk)){
+                    if (inversePosition.compareWithDisk(blackDisk) && blackDisk.getDiskType() != DiskType.NULL){
                         // process the cutting
                         blackDisk.setDiskType(DiskType.NULL); // set as the removed disk from the board
                         lastRemovedDisk.add(blackDisk); // set the last removed disk
@@ -209,14 +208,14 @@ public class DamModel {
             else{
                 // check relative to the black side
                 for (Disk blackDisk : blackSideDisks){
-                    if (newPosition.compareWithDisk(blackDisk)){
+                    if (newPosition.compareWithDisk(blackDisk) && blackDisk.getDiskType() != DiskType.NULL){
                         return false;
                     }
                 }
 
                 Position inversePosition = Position.inverse(newPosition);
                 for (Disk whiteDisk : whiteSideDisks){
-                    if (inversePosition.compareWithDisk(whiteDisk)){
+                    if (inversePosition.compareWithDisk(whiteDisk) && disk.getDiskType() != DiskType.NULL){
                         // process the cutting
                         whiteDisk.setDiskType(DiskType.NULL); // set as the removed disk from the board
                         lastRemovedDisk.add(whiteDisk); // set last removed disk
@@ -255,12 +254,11 @@ public class DamModel {
                 lastRemovedDisk.add(removedDisk);
             }
             c++;
-            if (!removed){
-                // change side
-                currentSide.set(getCurrentSide() == Side.WHITE ? Side.BLACK : Side.WHITE);
-            }
-        }
 
+        }
+        if (!removed){
+            currentSide.set(getCurrentSide() == Side.WHITE ? Side.BLACK : Side.WHITE);
+        }
         disk.setPosition(position);
 
     }
@@ -296,18 +294,20 @@ public class DamModel {
             return MoveType.NORMAL;
         }
 
+        // in last, check for king cutting
+        if (checkForKingCut(disk, position, getCurrentSide())  && (disk.getDiskType() == DiskType.WHITE_KING || disk.getDiskType() == DiskType.BLACK_KING)){
+            // performe the king cut operation
+            processKingCutting(disk, position, getCurrentSide());
+            return MoveType.KING_CUTTED;
+        }
+
         // now check for the cut move
-        if (processNormalCut(disk, position, getCurrentSide())){
+        else if (processNormalCut(disk, position, getCurrentSide())){
             // check for making king
             if (makeKing(disk, getCurrentSide())){
                 kingProperty.set(disk);
             }
             return MoveType.CUTTED;
-        }
-        // in last, check for king cutting
-        if (checkForKingCut(disk, position, getCurrentSide())){
-            processKingCutting(disk, position, getCurrentSide());
-            return MoveType.KING_CUTTED;
         }
         return MoveType.INVALID;
     }
@@ -329,7 +329,7 @@ public class DamModel {
             array = blackSideDisks;
 
         for (Disk disk : array){
-            if (position.compareWithDisk(disk))
+            if (position.compareWithDisk(disk) && disk.getDiskType() != DiskType.NULL)
                 return disk;
         }
 

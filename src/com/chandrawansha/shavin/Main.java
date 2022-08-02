@@ -302,10 +302,10 @@ public class Main extends Application {
 
                         // update the disk bars
                         if (whiteDisks.containsKey(disk.getActiveDisk())){
-                            leftDiskBar.addDisk(disk.getDiskType());
+                            leftDiskBar.addDisk(DiskType.WHITE);
                         }
                         else{
-                            rightDiskBar.addDisk(disk.getDiskType());
+                            rightDiskBar.addDisk(DiskType.BLACK);
                         }
                     }
                 }
@@ -324,8 +324,8 @@ public class Main extends Application {
         gameColorMap.put("BLACK-BOX", new SimpleObjectProperty<>(Color.BLACK));
         gameColorMap.put("WHITE-DISK", new SimpleObjectProperty<>(Color.DARKBLUE));
         gameColorMap.put("BLACK-DISK", new SimpleObjectProperty<>(Color.ORANGERED));
-        gameColorMap.put("WHITE-KING", new SimpleObjectProperty<Color>(Color.GOLD));
-        gameColorMap.put("BLACK-KING", new SimpleObjectProperty<Color>(Color.MEDIUMPURPLE));
+        gameColorMap.put("WHITE-KING", new SimpleObjectProperty<>(Color.GOLDENROD));
+        gameColorMap.put("BLACK-KING", new SimpleObjectProperty<>(Color.MEDIUMPURPLE));
 
     }
     // end of the settings side of the game
